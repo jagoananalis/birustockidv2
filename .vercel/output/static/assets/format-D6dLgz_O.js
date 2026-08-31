@@ -1,0 +1,1 @@
+var e=[`Januari`,`Februari`,`Maret`,`April`,`Mei`,`Juni`,`Juli`,`Agustus`,`September`,`Oktober`,`November`,`Desember`];function t(t){let[n,r,i]=t.slice(0,10).split(`-`).map(Number);return!n||!r||!i?t:`${i} ${e[r-1]} ${n}`}function n(e){return e.split(/\n{2,}/).map(e=>e.trim()).filter(Boolean)}export{n,t};

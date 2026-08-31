@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Beranda | Birustock Indonesia",
+      "hasCanvas": false,
+      "bodyTextLen": 2714,
+      "bodyTextHash": "d083ff305a46c72a2389edcbd1fd9e51ebfd8a061d85b6e44b4e1e90f2a87555",
+      "bodyTextPrefix": "Birustock INDONESIA Beranda Analisis News Edukasi Kalender Ekono",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Beranda | Birustock Indonesia",
+      "hasCanvas": false,
+      "bodyTextLen": 2673,
+      "bodyTextHash": "7f6f6be17a03e8b76830f5ee897740f1660e4620a64c4369f43869e43a50b5e3",
+      "bodyTextPrefix": "Birustock INDONESIA Birustock INDONESIA 15:30 WIB EUR CPI Flash ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
