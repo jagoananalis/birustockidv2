@@ -1,280 +1,663 @@
 import { createServerFn } from "@tanstack/react-start";
 
+
+
 export type CalendarImpact = "high" | "medium" | "low";
 
+
+
 export type CalendarEvent = {
+
   economy: string;
+
   impact: CalendarImpact;
+
   impactScore: number;
+
   data: string;
+
   name: string;
+
   actual: string;
+
   forecast: string;
+
   previous: string;
+
   timeWib: string;
+
   country: string;
+
 };
+
+
 
 export type CalendarPayload = {
+
   source: "live" | "cache" | "fallback";
+
   fetchedAt: string;
+
+  selectedDate: string;
+
   events: CalendarEvent[];
+
 };
 
+
+
 const IMPACT_LABEL: Record<CalendarImpact, string> = {
+
   high: "Tinggi",
+
   medium: "Sedang",
+
   low: "Rendah",
+
 };
+
+
 
 export { IMPACT_LABEL };
 
-type CacheSlot = { at: number; payload: CalendarPayload };
-const globalRef = globalThis as typeof globalThis & { __ecoCalCache__?: CacheSlot };
-const CACHE_MS = 10 * 60 * 1000;
 
-function dash(value: string | null | undefined) {
-  const v = (value ?? "").replace(/\u00a0/g, " ").trim();
-  return v.length ? v : "—";
-}
 
-function impactFromScore(score: number): CalendarImpact {
-  if (score >= 3) return "high";
-  if (score >= 2) return "medium";
-  return "low";
-}
+type FeedEvent = {
 
-function impactFromLabel(label: string): { score: number; impact: CalendarImpact } {
-  const v = label.toLowerCase();
-  if (v.includes("high") || v === "3" || v.includes("red")) return { score: 3, impact: "high" };
-  if (v.includes("med") || v === "2" || v.includes("ora") || v.includes("yel"))
-    return { score: 2, impact: "medium" };
-  return { score: 1, impact: "low" };
-}
-
-function toWib(isoOrStamp: string) {
-  const raw = isoOrStamp.trim();
-  if (!raw) return "—";
-  const hasZone = /[zZ]|[+-]\d{2}:?\d{2}$/.test(raw);
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-  const date = new Date(hasZone ? normalized : `${normalized}Z`);
-  if (Number.isNaN(date.getTime())) return raw;
-  const wib = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-  const hh = String(wib.getUTCHours()).padStart(2, "0");
-  const mm = String(wib.getUTCMinutes()).padStart(2, "0");
-  return `${hh}:${mm} WIB`;
-}
-
-function countryFromEconomy(economy: string) {
-  const map: Record<string, string> = {
-    USD: "US",
-    EUR: "EU",
-    GBP: "UK",
-    JPY: "JP",
-    AUD: "AU",
-    NZD: "NZ",
-    CAD: "CA",
-    CHF: "CH",
-    CNY: "CN",
-    IDR: "ID",
-  };
-  const key = economy.replace(/[^A-Za-z]/g, "").slice(-3).toUpperCase();
-  return map[key] ?? key.slice(0, 2) ?? "—";
-}
-
-async function fetchText(url: string, headers: Record<string, string> = {}) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        Accept: "text/html,application/json,application/xml;q=0.9,*/*;q=0.8",
-        "User-Agent":
-          "Mozilla/5.0 (compatible; BirustockCalendar/1.0; +https://birustock.id)",
-        ...headers,
-      },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-function decodeEntities(str: string) {
-  return str
-    .replace(/&nbsp;/g, " ")
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function cell(row: string, className: string) {
-  const re = new RegExp(`<td[^>]*class="[^"]*${className}[^"]*"[^>]*>([\\s\\S]*?)</td>`, "i");
-  const m = row.match(re);
-  return m ? decodeEntities(m[1]) : "";
-}
-
-/** Same source as andrevlima/economic-calendar-api: sslecal2.forexprostools.com */
-function parseInvestingHtml(html: string): CalendarEvent[] {
-  const events: CalendarEvent[] = [];
-  const rowRe = /<tr[^>]*id=["']eventRowId[^"']*["'][^>]*>([\s\S]*?)<\/tr>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = rowRe.exec(html))) {
-    const full = match[0];
-    const inner = match[1];
-    const ts = full.match(/event_timestamp=["']([^"']+)["']/i)?.[1] ?? "";
-    const economy = cell(inner, "flagCur") || cell(inner, "flag");
-    const sentiment = inner.match(/<td[^>]*class="[^"]*sentiment[^"]*"[^>]*>([\s\S]*?)<\/td>/i)?.[1] ?? "";
-    const bulls = (sentiment.match(/grayFullBullishIcon/g) ?? []).length;
-    const name = cell(inner, "event");
-    if (!name) continue;
-    const score = bulls || 1;
-    events.push({
-      economy: dash(economy).replace(/[^A-Za-z]/g, "").slice(-3) || "USD",
-      impact: impactFromScore(score),
-      impactScore: score,
-      data: ts,
-      name,
-      actual: dash(cell(inner, "act")),
-      forecast: dash(cell(inner, "fore")),
-      previous: dash(cell(inner, "prev")),
-      timeWib: toWib(ts),
-      country: countryFromEconomy(economy),
-    });
-  }
-  return events;
-}
-
-type FfEvent = {
   title?: string;
+
   country?: string;
+
   date?: string;
+
   impact?: string;
-  forecast?: string;
-  previous?: string;
+
   actual?: string;
+
+  forecast?: string;
+
+  previous?: string;
+
 };
 
-function parseFaireconomy(jsonText: string): CalendarEvent[] {
-  const parsed = JSON.parse(jsonText) as FfEvent[] | { events?: FfEvent[] };
-  const list = Array.isArray(parsed) ? parsed : (parsed.events ?? []);
-  return list
-    .map((e) => {
-      const { score, impact } = impactFromLabel(String(e.impact ?? ""));
-      const economy = String(e.country ?? "USD");
-      return {
-        economy,
-        impact,
-        impactScore: score,
-        data: String(e.date ?? ""),
-        name: String(e.title ?? ""),
-        actual: dash(e.actual),
-        forecast: dash(e.forecast),
-        previous: dash(e.previous),
-        timeWib: toWib(String(e.date ?? "")),
-        country: countryFromEconomy(economy),
-      } satisfies CalendarEvent;
-    })
-    .filter((e) => e.name);
+
+
+type WeeklyCache = {
+
+  at: number;
+
+  events: FeedEvent[];
+
+};
+
+
+
+const globalRef = globalThis as typeof globalThis & {
+
+  __ecoCalendarWeeklyCache__?: WeeklyCache;
+
+};
+
+
+
+// Sumber FF export hanya di-update sekitar sekali per jam,
+
+// jadi kita tidak perlu memintanya setiap page view.
+
+const CACHE_MS = 60 * 60 * 1000;
+
+
+
+const FEED_URL =
+
+  "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
+
+
+
+function getCache() {
+
+  return globalRef.__ecoCalendarWeeklyCache__;
+
 }
 
-function fallbackEvents(): CalendarEvent[] {
-  const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const mk = (
-    dayOffset: number,
-    hourUtc: number,
-    economy: string,
-    name: string,
-    score: number,
-    forecast: string,
-    previous: string,
-  ): CalendarEvent => {
-    const d = new Date(start.getTime() + dayOffset * 86400000);
-    d.setUTCHours(hourUtc, 30, 0, 0);
-    const iso = d.toISOString().replace("T", " ").slice(0, 19);
+
+
+function setCache(events: FeedEvent[]) {
+
+  globalRef.__ecoCalendarWeeklyCache__ = {
+
+    at: Date.now(),
+
+    events,
+
+  };
+
+}
+
+
+
+function dash(value: string | null | undefined) {
+
+  const text = (value ?? "").replace(/\u00a0/g, " ").trim();
+
+  return text.length ? text : "—";
+
+}
+
+
+
+function impactFromLabel(label: string) {
+
+  const value = label.toLowerCase().trim();
+
+
+
+  if (
+
+    value.includes("high") ||
+
+    value.includes("red") ||
+
+    value === "3"
+
+  ) {
+
     return {
-      economy,
-      impact: impactFromScore(score),
-      impactScore: score,
-      data: iso,
-      name,
-      actual: "—",
-      forecast,
-      previous,
-      timeWib: toWib(d.toISOString()),
-      country: countryFromEconomy(economy),
+
+      score: 3,
+
+      impact: "high" as const,
+
     };
-  };
-  return [
-    mk(0, 1, "CNY", "Manufacturing PMI", 2, "50.2", "49.8"),
-    mk(0, 8, "EUR", "CPI Flash Estimate (YoY)", 3, "2.1%", "2.2%"),
-    mk(0, 12, "USD", "Core PCE Price Index (MoM)", 3, "0.2%", "0.2%"),
-    mk(0, 14, "USD", "Crude Oil Inventories", 2, "—", "-2.1M"),
-    mk(1, 1, "AUD", "GDP (QoQ)", 2, "0.4%", "0.3%"),
-    mk(1, 8, "GBP", "BOE Gov Speaks", 3, "—", "—"),
-    mk(1, 12, "USD", "ISM Manufacturing PMI", 3, "49.5", "48.0"),
-    mk(1, 12, "USD", "JOLTS Job Openings", 2, "7.40M", "7.43M"),
-    mk(2, 6, "EUR", "ECB Interest Rate Decision", 3, "3.25%", "3.25%"),
-    mk(2, 12, "USD", "ADP Non-Farm Employment Change", 2, "115K", "104K"),
-    mk(2, 18, "USD", "FOMC Member Speaks", 2, "—", "—"),
-    mk(3, 0, "JPY", "BOJ Policy Rate", 3, "0.50%", "0.50%"),
-    mk(3, 12, "USD", "Initial Jobless Claims", 2, "230K", "237K"),
-    mk(3, 12, "USD", "CPI (YoY)", 3, "2.8%", "2.7%"),
-    mk(4, 4, "IDR", "Bank Indonesia Rate Decision", 1, "5.75%", "5.75%"),
-    mk(4, 12, "USD", "Non-Farm Employment Change", 3, "140K", "147K"),
-    mk(4, 12, "USD", "Unemployment Rate", 3, "4.2%", "4.2%"),
-    mk(4, 12, "USD", "Average Hourly Earnings (MoM)", 2, "0.3%", "0.3%"),
-  ];
-}
 
-async function loadLive(): Promise<CalendarPayload> {
-  const errors: string[] = [];
-
-  try {
-    const html = await fetchText("https://sslecal2.forexprostools.com/");
-    const events = parseInvestingHtml(html);
-    if (events.length > 0) {
-      return { source: "live", fetchedAt: new Date().toISOString(), events };
-    }
-    errors.push("investing widget empty");
-  } catch (err) {
-    errors.push(`investing: ${err instanceof Error ? err.message : "fail"}`);
   }
 
-  try {
-    const json = await fetchText("https://nfs.faireconomy.media/ff_calendar_thisweek.json", {
-      Accept: "application/json",
-    });
-    const events = parseFaireconomy(json);
-    if (events.length > 0) {
-      return { source: "live", fetchedAt: new Date().toISOString(), events };
-    }
-    errors.push("faireconomy empty");
-  } catch (err) {
-    errors.push(`faireconomy: ${err instanceof Error ? err.message : "fail"}`);
+
+
+  if (
+
+    value.includes("medium") ||
+
+    value.includes("med") ||
+
+    value.includes("orange") ||
+
+    value.includes("yellow") ||
+
+    value === "2"
+
+  ) {
+
+    return {
+
+      score: 2,
+
+      impact: "medium" as const,
+
+    };
+
   }
 
-  void errors;
+
+
   return {
-    source: "fallback",
-    fetchedAt: new Date().toISOString(),
-    events: fallbackEvents(),
+
+    score: 1,
+
+    impact: "low" as const,
+
   };
+
 }
 
-export const getEconomicCalendar = createServerFn({ method: "GET" }).handler(async () => {
-  const cached = globalRef.__ecoCalCache__;
-  if (cached && Date.now() - cached.at < CACHE_MS) {
-    return { ...cached.payload, source: cached.payload.source === "fallback" ? "fallback" : "cache" };
+
+
+function countryFromCurrency(currency: string) {
+
+  const map: Record<string, string> = {
+
+    USD: "US",
+
+    EUR: "EU",
+
+    GBP: "UK",
+
+    JPY: "JP",
+
+    AUD: "AU",
+
+    NZD: "NZ",
+
+    CAD: "CA",
+
+    CHF: "CH",
+
+    CNY: "CN",
+
+    IDR: "ID",
+
+    ALL: "—",
+
+  };
+
+
+
+  return map[currency.toUpperCase()] ?? currency.toUpperCase();
+
+}
+
+
+
+function getWibParts(isoDate: string) {
+
+  const date = new Date(isoDate);
+
+
+
+  if (Number.isNaN(date.getTime())) {
+
+    return null;
+
   }
-  const payload = await loadLive();
-  globalRef.__ecoCalCache__ = { at: Date.now(), payload };
-  return payload;
-});
+
+
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+
+    timeZone: "Asia/Jakarta",
+
+    year: "numeric",
+
+    month: "2-digit",
+
+    day: "2-digit",
+
+    hour: "2-digit",
+
+    minute: "2-digit",
+
+    hour12: false,
+
+  }).formatToParts(date);
+
+
+
+  const values: Record<string, string> = {};
+
+
+
+  for (const part of parts) {
+
+    if (part.type !== "literal") {
+
+      values[part.type] = part.value;
+
+    }
+
+  }
+
+
+
+  return {
+
+    dateKey: `${values.year}-${values.month}-${values.day}`,
+
+    time: `${values.hour}:${values.minute}`,
+
+  };
+
+}
+
+
+
+function normalizeEvent(event: FeedEvent): CalendarEvent | null {
+
+  const name = dash(event.title);
+
+
+
+  if (name === "—") {
+
+    return null;
+
+  }
+
+
+
+  const economy = dash(event.country).toUpperCase();
+
+  const { score, impact } = impactFromLabel(
+
+    dash(event.impact),
+
+  );
+
+
+
+  const rawDate = dash(event.date);
+
+  const wib = rawDate !== "—" ? getWibParts(rawDate) : null;
+
+
+
+  return {
+
+    economy,
+
+    impact,
+
+    impactScore: score,
+
+    data: rawDate,
+
+    name,
+
+    actual: dash(event.actual),
+
+    forecast: dash(event.forecast),
+
+    previous: dash(event.previous),
+
+    timeWib: wib ? `${wib.time} WIB` : "—",
+
+    country: countryFromCurrency(economy),
+
+  };
+
+}
+
+
+
+function filterEventsByDate(
+
+  events: FeedEvent[],
+
+  selectedDate: string,
+
+) {
+
+  return events
+
+    .map(normalizeEvent)
+
+    .filter((event): event is CalendarEvent => event !== null)
+
+    .filter((event) => {
+
+      if (event.data === "—") {
+
+        return false;
+
+      }
+
+
+
+      const wib = getWibParts(event.data);
+
+
+
+      return wib?.dateKey === selectedDate;
+
+    })
+
+    .sort((a, b) => {
+
+      const timeA = a.timeWib.replace(" WIB", "");
+
+      const timeB = b.timeWib.replace(" WIB", "");
+
+
+
+      return timeA.localeCompare(timeB);
+
+    });
+
+}
+
+
+
+async function fetchWeeklyFeed(): Promise<FeedEvent[]> {
+
+  const response = await fetch(FEED_URL, {
+
+    headers: {
+
+      Accept: "application/json",
+
+      "User-Agent":
+
+        "Mozilla/5.0 (compatible; BirustockCalendar/1.0)",
+
+    },
+
+  });
+
+
+
+  if (!response.ok) {
+
+    throw new Error(
+
+      `Calendar feed HTTP ${response.status}`,
+
+    );
+
+  }
+
+
+
+  const contentType =
+
+    response.headers.get("content-type") ?? "";
+
+
+
+  const text = await response.text();
+
+
+
+  // Rate-limit/challenge page kadang dikembalikan sebagai HTML
+
+  // walaupun status HTTP bukan error.
+
+  if (
+
+    !contentType.includes("application/json") ||
+
+    text.trimStart().startsWith("<!DOCTYPE") ||
+
+    text.trimStart().startsWith("<html")
+
+  ) {
+
+    throw new Error(
+
+      "Calendar feed returned non-JSON content (possibly rate limited).",
+
+    );
+
+  }
+
+
+
+  const parsed = JSON.parse(text) as unknown;
+
+
+
+  if (!Array.isArray(parsed)) {
+
+    throw new Error("Calendar feed JSON format is invalid.");
+
+  }
+
+
+
+  return parsed as FeedEvent[];
+
+}
+
+
+
+async function getWeeklyEvents() {
+
+  const cached = getCache();
+
+
+
+  if (
+
+    cached &&
+
+    Date.now() - cached.at < CACHE_MS &&
+
+    cached.events.length > 0
+
+  ) {
+
+    return {
+
+      events: cached.events,
+
+      fromCache: true,
+
+    };
+
+  }
+
+
+
+  const events = await fetchWeeklyFeed();
+
+
+
+  setCache(events);
+
+
+
+  return {
+
+    events,
+
+    fromCache: false,
+
+  };
+
+}
+
+
+
+function todayWib() {
+
+  return new Intl.DateTimeFormat("en-CA", {
+
+    timeZone: "Asia/Jakarta",
+
+    year: "numeric",
+
+    month: "2-digit",
+
+    day: "2-digit",
+
+  }).format(new Date());
+
+}
+
+
+
+export const getEconomicCalendar = createServerFn({
+
+  method: "GET",
+
+})
+
+  .validator((input: unknown) => {
+
+    const value =
+
+      input && typeof input === "object"
+
+        ? (input as Record<string, unknown>)
+
+        : {};
+
+
+
+    const date =
+
+      typeof value.date === "string"
+
+        ? value.date
+
+        : todayWib();
+
+
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+
+      throw new Error("Invalid calendar date.");
+
+    }
+
+
+
+    return { date };
+
+  })
+
+  .handler(async ({ data }) => {
+
+    try {
+
+      const result = await getWeeklyEvents();
+
+
+
+      const events = filterEventsByDate(
+
+        result.events,
+
+        data.date,
+
+      );
+
+
+
+      return {
+
+        source: result.fromCache ? "cache" : "live",
+
+        fetchedAt: new Date().toISOString(),
+
+        selectedDate: data.date,
+
+        events,
+
+      } satisfies CalendarPayload;
+
+    } catch (error) {
+
+      console.error(
+
+        "[calendar] weekly feed failed:",
+
+        error,
+
+      );
+
+
+
+      return {
+
+        source: "fallback",
+
+        fetchedAt: new Date().toISOString(),
+
+        selectedDate: data.date,
+
+        events: [],
+
+      } satisfies CalendarPayload;
+
+    }
+
+  });
