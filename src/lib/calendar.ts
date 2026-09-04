@@ -82,11 +82,47 @@ type FeedEvent = {
 
 
 
+type ActualFeedEvent = {
+
+  time?: string;
+
+  timezone?: string;
+
+  currency?: string;
+
+  impact?: string;
+
+  impact_level?: string;
+
+  event?: string;
+
+  detail?: string;
+
+  actual?: string;
+
+  forecast?: string | null;
+
+  previous?: string | null;
+
+  day?: string;
+
+  date?: string;
+
+  datetime_utc?: string | null;
+
+  scraped_at?: string;
+
+};
+
+
+
 type WeeklyCache = {
 
   at: number;
 
-  events: FeedEvent[];
+  calendarEvents: FeedEvent[];
+
+  actualEvents: ActualFeedEvent[];
 
 };
 
@@ -100,17 +136,19 @@ const globalRef = globalThis as typeof globalThis & {
 
 
 
-// Sumber FF export hanya di-update sekitar sekali per jam,
-
-// jadi kita tidak perlu memintanya setiap page view.
-
 const CACHE_MS = 60 * 60 * 1000;
 
 
 
-const FEED_URL =
+const CALENDAR_URL =
 
   "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
+
+
+
+const ACTUAL_URL =
+
+  "https://raw.githubusercontent.com/joor0x/forex-factory-agent-feed/main/news/calendar.json";
 
 
 
@@ -122,13 +160,21 @@ function getCache() {
 
 
 
-function setCache(events: FeedEvent[]) {
+function setCache(
+
+  calendarEvents: FeedEvent[],
+
+  actualEvents: ActualFeedEvent[],
+
+) {
 
   globalRef.__ecoCalendarWeeklyCache__ = {
 
     at: Date.now(),
 
-    events,
+    calendarEvents,
+
+    actualEvents,
 
   };
 
@@ -141,6 +187,20 @@ function dash(value: string | null | undefined) {
   const text = (value ?? "").replace(/\u00a0/g, " ").trim();
 
   return text.length ? text : "—";
+
+}
+
+
+
+function normalizeText(value: string | null | undefined) {
+
+  return String(value ?? "")
+
+    .toLowerCase()
+
+    .replace(/[^a-z0-9]+/g, " ")
+
+    .trim();
 
 }
 
@@ -310,6 +370,70 @@ function getWibParts(isoDate: string) {
 
 
 
+function getDateKeyFromFf(event: ActualFeedEvent) {
+
+  if (event.datetime_utc) {
+
+    const wib = getWibParts(event.datetime_utc);
+
+
+
+    if (wib) {
+
+      return wib.dateKey;
+
+    }
+
+  }
+
+
+
+  const match = String(event.date ?? "").match(
+
+    /^(\d{2})\/(\d{2})\/(\d{4})$/,
+
+  );
+
+
+
+  if (!match) {
+
+    return null;
+
+  }
+
+
+
+  return `${match[3]}-${match[2]}-${match[1]}`;
+
+}
+
+
+
+function timestampFromIso(value?: string | null) {
+
+  if (!value) return null;
+
+
+
+  const time = new Date(value).getTime();
+
+
+
+  return Number.isNaN(time) ? null : time;
+
+}
+
+
+
+function timestampFromFf(event: ActualFeedEvent) {
+
+  return timestampFromIso(event.datetime_utc);
+
+}
+
+
+
 function normalizeEvent(event: FeedEvent): CalendarEvent | null {
 
   const name = dash(event.title);
@@ -368,9 +492,161 @@ function normalizeEvent(event: FeedEvent): CalendarEvent | null {
 
 
 
+function findMatchingActual(
+
+  baseEvent: FeedEvent,
+
+  actualEvents: ActualFeedEvent[],
+
+) {
+
+  const baseCurrency = String(baseEvent.country ?? "")
+
+    .trim()
+
+    .toUpperCase();
+
+
+
+  const baseTitle = normalizeText(baseEvent.title);
+
+  const baseTimestamp = timestampFromIso(baseEvent.date);
+
+
+
+  const baseDateKey = baseEvent.date
+
+    ? getWibParts(baseEvent.date)?.dateKey
+
+    : null;
+
+
+
+  if (!baseCurrency || !baseTitle || !baseDateKey) {
+
+    return null;
+
+  }
+
+
+
+  const candidates = actualEvents.filter((candidate) => {
+
+    const candidateCurrency = String(
+
+      candidate.currency ?? "",
+
+    )
+
+      .trim()
+
+      .toUpperCase();
+
+
+
+    if (candidateCurrency !== baseCurrency) {
+
+      return false;
+
+    }
+
+
+
+    if (
+
+      normalizeText(candidate.event) !== baseTitle
+
+    ) {
+
+      return false;
+
+    }
+
+
+
+    return getDateKeyFromFf(candidate) === baseDateKey;
+
+  });
+
+
+
+  if (candidates.length === 0) {
+
+    return null;
+
+  }
+
+
+
+  if (candidates.length === 1) {
+
+    return candidates[0];
+
+  }
+
+
+
+  // Kalau ada event dengan nama sama lebih dari sekali,
+
+  // pilih yang waktunya paling dekat.
+
+  if (baseTimestamp !== null) {
+
+    const withDistance = candidates.map((candidate) => {
+
+      const candidateTimestamp =
+
+        timestampFromFf(candidate);
+
+
+
+      return {
+
+        candidate,
+
+        distance:
+
+          candidateTimestamp === null
+
+            ? Number.MAX_SAFE_INTEGER
+
+            : Math.abs(
+
+                candidateTimestamp - baseTimestamp,
+
+              ),
+
+      };
+
+    });
+
+
+
+    withDistance.sort(
+
+      (a, b) => a.distance - b.distance,
+
+    );
+
+
+
+    return withDistance[0]?.candidate ?? null;
+
+  }
+
+
+
+  return candidates[0];
+
+}
+
+
+
 function filterEventsByDate(
 
   events: FeedEvent[],
+
+  actualEvents: ActualFeedEvent[],
 
   selectedDate: string,
 
@@ -378,9 +654,51 @@ function filterEventsByDate(
 
   return events
 
-    .map(normalizeEvent)
+    .map((baseEvent) => {
 
-    .filter((event): event is CalendarEvent => event !== null)
+      const normalized = normalizeEvent(baseEvent);
+
+
+
+      if (!normalized) {
+
+        return null;
+
+      }
+
+
+
+      const actualMatch = findMatchingActual(
+
+        baseEvent,
+
+        actualEvents,
+
+      );
+
+
+
+      return {
+
+        ...normalized,
+
+        actual: actualMatch?.actual?.trim()
+
+          ? actualMatch.actual.trim()
+
+          : normalized.actual,
+
+      };
+
+    })
+
+    .filter(
+
+      (event): event is CalendarEvent =>
+
+        event !== null,
+
+    )
 
     .filter((event) => {
 
@@ -416,9 +734,9 @@ function filterEventsByDate(
 
 
 
-async function fetchWeeklyFeed(): Promise<FeedEvent[]> {
+async function fetchJson<T>(url: string): Promise<T> {
 
-  const response = await fetch(FEED_URL, {
+  const response = await fetch(url, {
 
     headers: {
 
@@ -426,7 +744,7 @@ async function fetchWeeklyFeed(): Promise<FeedEvent[]> {
 
       "User-Agent":
 
-        "Mozilla/5.0 (compatible; BirustockCalendar/1.0)",
+        "BirustockEconomicCalendar/1.0",
 
     },
 
@@ -438,7 +756,7 @@ async function fetchWeeklyFeed(): Promise<FeedEvent[]> {
 
     throw new Error(
 
-      `Calendar feed HTTP ${response.status}`,
+      `HTTP ${response.status} from ${url}`,
 
     );
 
@@ -456,23 +774,27 @@ async function fetchWeeklyFeed(): Promise<FeedEvent[]> {
 
 
 
-  // Rate-limit/challenge page kadang dikembalikan sebagai HTML
+  const trimmed = text.trimStart();
 
-  // walaupun status HTTP bukan error.
+
 
   if (
 
-    !contentType.includes("application/json") ||
+    trimmed.startsWith("<!DOCTYPE") ||
 
-    text.trimStart().startsWith("<!DOCTYPE") ||
+    trimmed.startsWith("<html") ||
 
-    text.trimStart().startsWith("<html")
+    (!contentType.includes("application/json") &&
+
+      !trimmed.startsWith("[") &&
+
+      !trimmed.startsWith("{"))
 
   ) {
 
     throw new Error(
 
-      "Calendar feed returned non-JSON content (possibly rate limited).",
+      "Calendar source returned non-JSON content.",
 
     );
 
@@ -480,19 +802,23 @@ async function fetchWeeklyFeed(): Promise<FeedEvent[]> {
 
 
 
-  const parsed = JSON.parse(text) as unknown;
+  return JSON.parse(text) as T;
+
+}
 
 
 
-  if (!Array.isArray(parsed)) {
+async function fetchCalendarFeed() {
 
-    throw new Error("Calendar feed JSON format is invalid.");
+  return fetchJson<FeedEvent[]>(CALENDAR_URL);
 
-  }
+}
 
 
 
-  return parsed as FeedEvent[];
+async function fetchActualFeed() {
+
+  return fetchJson<ActualFeedEvent[]>(ACTUAL_URL);
 
 }
 
@@ -510,13 +836,15 @@ async function getWeeklyEvents() {
 
     Date.now() - cached.at < CACHE_MS &&
 
-    cached.events.length > 0
+    cached.calendarEvents.length > 0
 
   ) {
 
     return {
 
-      events: cached.events,
+      calendarEvents: cached.calendarEvents,
+
+      actualEvents: cached.actualEvents,
 
       fromCache: true,
 
@@ -526,17 +854,83 @@ async function getWeeklyEvents() {
 
 
 
-  const events = await fetchWeeklyFeed();
+  // Kedua sumber diambil terpisah.
+
+  // Kalau FF Actual gagal, calendar utama tetap berjalan.
+
+  const [calendarResult, actualResult] =
+
+    await Promise.allSettled([
+
+      fetchCalendarFeed(),
+
+      fetchActualFeed(),
+
+    ]);
 
 
 
-  setCache(events);
+  if (calendarResult.status === "rejected") {
+
+    throw calendarResult.reason;
+
+  }
+
+
+
+  const calendarEvents = calendarResult.value;
+
+
+
+  const actualEvents =
+
+    actualResult.status === "fulfilled"
+
+      ? actualResult.value
+
+      : [];
+
+
+
+  if (actualResult.status === "rejected") {
+
+    console.error(
+
+      "[calendar] FF Actual feed failed:",
+
+      actualResult.reason,
+
+    );
+
+  }
+
+
+
+  setCache(calendarEvents, actualEvents);
+
+
+
+  console.log(
+
+    "[calendar] weekly feed:",
+
+    calendarEvents.length,
+
+    "base events;",
+
+    actualEvents.length,
+
+    "FF events;",
+
+  );
 
 
 
   return {
 
-    events,
+    calendarEvents,
+
+    actualEvents,
 
     fromCache: false,
 
@@ -594,7 +988,11 @@ export const getEconomicCalendar = createServerFn({
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
 
-      throw new Error("Invalid calendar date.");
+      throw new Error(
+
+        "Invalid calendar date.",
+
+      );
 
     }
 
@@ -614,7 +1012,9 @@ export const getEconomicCalendar = createServerFn({
 
       const events = filterEventsByDate(
 
-        result.events,
+        result.calendarEvents,
+
+        result.actualEvents,
 
         data.date,
 
@@ -624,7 +1024,11 @@ export const getEconomicCalendar = createServerFn({
 
       return {
 
-        source: result.fromCache ? "cache" : "live",
+        source: result.fromCache
+
+          ? "cache"
+
+          : "live",
 
         fetchedAt: new Date().toISOString(),
 
