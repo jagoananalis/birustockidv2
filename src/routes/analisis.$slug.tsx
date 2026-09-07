@@ -1,5 +1,12 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { IconArrowRight } from "@/components/icons";
+import type { ReactNode } from "react";
+import {
+  IconArrowRight,
+  IconCalendar,
+  IconDocument,
+  IconTrendDown,
+  IconTrendUp,
+} from "@/components/icons";
 import { getAnalisisBySlug } from "@/lib/content";
 import { formatIdDate, splitParagraphs } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -43,65 +50,231 @@ export const Route = createFileRoute("/analisis/$slug")({
 function AnalisisDetail() {
   const item = Route.useLoaderData();
   const paragraphs = splitParagraphs(item.body);
+  const isBullish = item.bias === "Bullish";
+  const isBearish = item.bias === "Bearish";
 
   return (
-    <section className="py-16 max-md:py-11">
+    <main className="analysis-detail-page py-10 max-md:py-7">
       <div className="container-site">
-        <article className="mx-auto max-w-[760px] stagger">
-          <div className="mb-6">
-            <Link to="/analisis" search={{ page: 1 }} className="link-arrow">
+        <nav className="detail-breadcrumb" aria-label="Breadcrumb">
+          <Link to="/analisis" search={{ page: 1 }}>
+            Analisis
+          </Link>
+          <span>/</span>
+          <span aria-current="page">{item.title}</span>
+        </nav>
+
+        <section className="analysis-detail-hero stagger">
+          <div className="analysis-detail-hero-copy">
+            <Link to="/analisis" search={{ page: 1 }} className="detail-back-link">
               <span className="inline-block rotate-180">
                 <IconArrowRight size={15} />
               </span>
               Kembali ke Analisis
             </Link>
-          </div>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <span className={cn("badge", ACCENT[item.accent])}>{item.pair}</span>
-            <span className="text-[13px] text-subtle">Terbit {formatIdDate(item.publishedAt)}</span>{item.updatedAt.slice(0, 10) !== item.publishedAt ? <span className="text-[13px] text-subtle">Diperbarui {formatIdDate(item.updatedAt)}</span> : null}
-          </div>
-          <h1 className="mb-4 text-[clamp(2rem,4.5vw,3.2rem)] leading-[1.08] font-extrabold tracking-tight">{item.title}</h1>
-          <p className="mb-7 max-w-3xl text-lg leading-relaxed text-muted">{item.excerpt}</p>
-          {item.imageUrl ? (
-            <div className="cover-frame mb-8">
-              <img src={item.imageUrl} alt={item.title} />
+
+            <div className="mt-7 flex flex-wrap items-center gap-2.5">
+              <span className="badge">ANALISIS</span>
+              <span className={cn("badge", ACCENT[item.accent])}>{item.pair}</span>
+              <span className="detail-pill">{item.timeframe}</span>
+              <span
+                className={cn(
+                  "detail-pill flex items-center gap-1.5",
+                  isBullish && "detail-pill-positive",
+                  isBearish && "detail-pill-negative",
+                )}
+              >
+                {isBullish ? <IconTrendUp size={14} /> : null}
+                {isBearish ? <IconTrendDown size={14} /> : null}
+                {item.bias}
+              </span>
             </div>
-          ) : null}
-          <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Metric label="Bias" value={item.bias} />
-            <Metric label="Timeframe" value={item.timeframe} />
-            <Metric label="Support" value={item.support || "—"} />
-            <Metric label="Resistance" value={item.resistance || "—"} />
-            <Metric label="Target" value={item.target || "—"} />
-            <Metric label="Invalidation" value={item.invalidation || "—"} />
-          </div>
-          {(item.scenarioBullish || item.scenarioBearish) ? (
-            <div className="mb-8 grid gap-3 md:grid-cols-2">
-              {item.scenarioBullish ? <Scenario title="Skenario Bullish" value={item.scenarioBullish} /> : null}
-              {item.scenarioBearish ? <Scenario title="Skenario Bearish" value={item.scenarioBearish} /> : null}
+
+            <h1>{item.title}</h1>
+            <p className="analysis-detail-lead">{item.excerpt}</p>
+
+            <div className="analysis-detail-meta">
+              <span>
+                <IconCalendar size={15} />
+                Terbit {formatIdDate(item.publishedAt)}
+              </span>
+              <span>
+                <IconDocument size={15} />
+                {item.updatedAt.slice(0, 10) !== item.publishedAt
+                  ? `Diperbarui ${formatIdDate(item.updatedAt)}`
+                  : "Analisis Birustock"}
+              </span>
+              <span>Status {item.status === "PUBLISHED" ? "Published" : item.status}</span>
             </div>
-          ) : null}
-          <div className="reading-column">
-          {paragraphs.map((p) => (
-            <p key={p} className="mb-4.5 text-base leading-relaxed text-muted">
-              {p}
-            </p>
-          ))}
           </div>
-          <div className="mt-8 rounded-[8px] border border-line bg-bg-alt px-4.5 py-4 text-[13.5px] text-muted">
-            Analisis ini bersifat edukasi dan bukan merupakan ajakan atau rekomendasi untuk
-            membeli/menjual instrumen tertentu. Selalu gunakan manajemen risiko pribadi.
+
+          <div className="analysis-detail-chart-card">
+            {item.imageUrl ? (
+              <img src={item.imageUrl} alt={`Chart ${item.pair}`} />
+            ) : (
+              <div className="analysis-chart-placeholder">
+                <div className="analysis-chart-grid" />
+                <div className="analysis-chart-placeholder-copy">
+                  <span>{item.pair}</span>
+                  <strong>{item.timeframe}</strong>
+                  <small>Chart belum tersedia</small>
+                </div>
+              </div>
+            )}
           </div>
-        </article>
+        </section>
+
+        <div className="analysis-detail-layout mt-6">
+          <article className="analysis-detail-main">
+            <section className="detail-panel detail-panel-primary">
+              <SectionHeading title="Ringkasan Analisis" />
+              <p className="detail-summary">{item.excerpt}</p>
+              <div className="market-grid mt-5">
+                <MetricTile label="Bias" value={item.bias} tone={isBullish ? "positive" : isBearish ? "negative" : "default"} />
+                <MetricTile label="Timeframe" value={item.timeframe} />
+                <MetricTile label="Pair" value={item.pair} />
+                <MetricTile label="Support" value={item.support || "—"} tone="positive" />
+                <MetricTile label="Resistance" value={item.resistance || "—"} tone="negative" />
+                <MetricTile label="Target" value={item.target || "—"} tone="primary" />
+                <MetricTile label="Invalidation" value={item.invalidation || "—"} tone="warning" />
+              </div>
+            </section>
+
+            {(item.scenarioBullish || item.scenarioBearish) ? (
+              <section className="detail-panel">
+                <SectionHeading title="Skenario Pergerakan Harga" />
+                <div className="scenario-grid">
+                  {item.scenarioBullish ? (
+                    <ScenarioCard tone="positive" title="Skenario Bullish" value={item.scenarioBullish} icon={<IconTrendUp size={17} />} />
+                  ) : null}
+                  {item.scenarioBearish ? (
+                    <ScenarioCard tone="negative" title="Skenario Bearish" value={item.scenarioBearish} icon={<IconTrendDown size={17} />} />
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+
+            <section className="detail-panel">
+              <SectionHeading title="Analisis Teknis" />
+              <div className="reading-column analysis-reading-column">
+                {paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            </section>
+
+            <section className="detail-panel">
+              <SectionHeading title="Kesimpulan" />
+              <div className="conclusion-box">
+                <div className="conclusion-mark">✓</div>
+                <p>
+                  {isBullish
+                    ? `Selama bias bullish masih didukung oleh level support ${item.support || "utama"}, peluang menuju ${item.target || "target berikutnya"} tetap terbuka. Tetap perhatikan invalidation ${item.invalidation || "yang ditetapkan"}.`
+                    : isBearish
+                      ? `Tekanan bearish perlu dikonfirmasi dengan kegagalan mempertahankan area support ${item.support || "utama"}. Perhatikan target ${item.target || "berikutnya"} dan invalidation ${item.invalidation || "yang ditetapkan"}.`
+                      : `Pergerakan masih netral. Perhatikan reaksi harga pada support ${item.support || "utama"} dan resistance ${item.resistance || "utama"} sebelum menentukan skenario berikutnya.`}
+                </p>
+              </div>
+            </section>
+
+            <div className="analysis-disclaimer">
+              Analisis ini bersifat edukasi dan bukan merupakan ajakan atau rekomendasi untuk membeli atau menjual instrumen tertentu. Selalu gunakan manajemen risiko pribadi.
+            </div>
+          </article>
+
+          <aside className="analysis-detail-sidebar">
+            <section className="detail-panel detail-side-card">
+              <SectionHeading title="Level Penting" />
+              <LevelRow label="Support" value={item.support || "—"} tone="positive" />
+              <LevelRow label="Resistance" value={item.resistance || "—"} tone="negative" />
+              <LevelRow label="Target" value={item.target || "—"} tone="primary" />
+              <LevelRow label="Invalidation" value={item.invalidation || "—"} tone="warning" />
+            </section>
+
+            <section className="detail-panel detail-side-card">
+              <SectionHeading title="Informasi Konten" />
+              <InfoRow label="Kategori" value="Analisis" />
+              <InfoRow label="Pair" value={item.pair} />
+              <InfoRow label="Timeframe" value={item.timeframe} />
+              <InfoRow label="Bias" value={item.bias} />
+              <InfoRow label="Tanggal Terbit" value={formatIdDate(item.publishedAt)} />
+              <InfoRow label="Diperbarui" value={formatIdDate(item.updatedAt.slice(0, 10))} />
+            </section>
+          </aside>
+        </div>
       </div>
-    </section>
+    </main>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-sm border border-line bg-bg-alt p-3.5"><div className="text-[11px] font-semibold uppercase tracking-wide text-subtle">{label}</div><div className="mt-1.5 text-sm font-bold text-ink">{value}</div></div>;
+function SectionHeading({ title }: { title: string }) {
+  return <h2 className="detail-section-title">{title}</h2>;
 }
 
-function Scenario({ title, value }: { title: string; value: string }) {
-  return <div className="rounded-sm border border-line bg-surface p-4"><div className="mb-2 text-xs font-bold text-primary">{title}</div><p className="text-sm leading-relaxed text-muted">{value}</p></div>;
+function MetricTile({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "positive" | "negative" | "primary" | "warning";
+}) {
+  return (
+    <div className={cn("metric-tile", `metric-${tone}`)}>
+      <div className="metric-label">{label}</div>
+      <div className="metric-value">{value}</div>
+    </div>
+  );
+}
+
+function ScenarioCard({
+  tone,
+  title,
+  value,
+  icon,
+}: {
+  tone: "positive" | "negative";
+  title: string;
+  value: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className={cn("scenario-card", tone === "positive" ? "scenario-positive" : "scenario-negative")}>
+      <div className="scenario-title">
+        {icon}
+        <span>{title}</span>
+      </div>
+      <p>{value}</p>
+    </div>
+  );
+}
+
+function LevelRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "positive" | "negative" | "primary" | "warning";
+}) {
+  return (
+    <div className="level-row">
+      <span className={cn("level-dot", `level-dot-${tone}`)} />
+      <div>
+        <span className="level-label">{label}</span>
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="info-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
 }

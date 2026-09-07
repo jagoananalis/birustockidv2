@@ -1,6 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { IconArrowRight, NewsThumb } from "@/components/icons";
+import { IconArrowRight, IconCalendar, IconDocument, NewsThumb } from "@/components/icons";
 import { getNewsBySlug } from "@/lib/news";
+import { formatIdDate } from "@/lib/format";
 
 export const Route = createFileRoute("/news/$slug")({
   loader: async ({ params }) => {
@@ -12,7 +13,6 @@ export const Route = createFileRoute("/news/$slug")({
   head: ({ loaderData }) => {
     const title = `${loaderData?.title ?? "News"} | Birustock Indonesia`;
     const description = loaderData?.excerpt ?? "";
-    const image = "/og.jpg";
     return {
       meta: [
         { title },
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/news/$slug")({
         { property: "og:type", content: "article" },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
-        { property: "og:image", content: image },
+        { property: "og:image", content: "/og.jpg" },
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
@@ -33,21 +33,56 @@ export const Route = createFileRoute("/news/$slug")({
 
 function NewsDetail() {
   const item = Route.useLoaderData();
+
   return (
-    <section className="py-16 max-md:py-11">
+    <main className="analysis-detail-page py-10 max-md:py-7">
       <div className="container-site">
-        <article className="mx-auto max-w-[820px] stagger">
-          <Link to="/news" search={{ page: 1 }} className="link-arrow mb-6"><span className="inline-block rotate-180"><IconArrowRight size={15} /></span>Kembali ke News</Link>
-          <div className="mb-5 overflow-hidden rounded-md border border-line bg-surface">
-            <div className="aspect-video"><NewsThumb type={item.thumb} /></div>
+        <nav className="detail-breadcrumb" aria-label="Breadcrumb">
+          <Link to="/news" search={{ page: 1 }}>News</Link>
+          <span>/</span>
+          <span aria-current="page">{item.title}</span>
+        </nav>
+
+        <section className="content-detail-hero stagger">
+          <div>
+            <Link to="/news" search={{ page: 1 }} className="detail-back-link">
+              <span className="inline-block rotate-180"><IconArrowRight size={15} /></span>
+              Kembali ke News
+            </Link>
+            <div className="mt-7 flex flex-wrap items-center gap-2.5">
+              <span className="badge">{item.category}</span>
+              <span className="detail-pill">Berita</span>
+            </div>
+            <h1>{item.title}</h1>
+            <p className="analysis-detail-lead">{item.excerpt}</p>
+            <div className="analysis-detail-meta">
+              <span><IconCalendar size={15} />Terbit {formatIdDate(item.publishedAt)}</span>
+              <span><IconDocument size={15} />Diperbarui {formatIdDate(item.updatedAt.slice(0, 10))}</span>
+            </div>
           </div>
-          <div className="mb-4 flex flex-wrap items-center gap-3"><span className="badge">{item.category}</span><span className="text-[13px] text-subtle">Terbit {item.date}</span>{item.updatedAt.slice(0, 10) !== item.date ? <span className="text-[13px] text-subtle">Diperbarui {item.updatedAt.slice(0, 10)}</span> : null}</div>
-          <h1 className="mb-4 text-[clamp(2rem,4.5vw,3.2rem)] leading-[1.08] font-extrabold tracking-tight">{item.title}</h1>
-          <p className="mb-7 text-lg leading-relaxed text-muted">{item.excerpt}</p>
-          <div className="reading-column">{item.body.map((p) => <p key={p} className="mb-5 text-base leading-[1.85] text-muted">{p}</p>)}</div>
-        <div className="mt-8 rounded-[8px] border border-line bg-bg-alt px-4.5 py-4 text-[13.5px] leading-relaxed text-muted">Berita ini disajikan sebagai informasi pasar. Selalu cek data dan sumber terbaru sebelum mengambil keputusan finansial.</div>
-        </article>
+          <div className="content-detail-media">
+            <NewsThumb type={item.thumb} />
+          </div>
+        </section>
+
+        <div className="content-detail-layout mt-6">
+          <article className="detail-panel content-detail-reading">
+            <h2 className="detail-section-title">Berita Lengkap</h2>
+            <div className="reading-column analysis-reading-column">
+              {item.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            </div>
+            <div className="analysis-disclaimer">
+              Berita ini disajikan sebagai informasi pasar. Selalu cek data dan sumber terbaru sebelum mengambil keputusan finansial.
+            </div>
+          </article>
+          <aside className="detail-panel detail-side-card">
+            <h2 className="detail-section-title">Informasi Konten</h2>
+            <div className="info-row"><span>Kategori</span><strong>{item.category}</strong></div>
+            <div className="info-row"><span>Tanggal Terbit</span><strong>{formatIdDate(item.publishedAt)}</strong></div>
+            <div className="info-row"><span>Diperbarui</span><strong>{formatIdDate(item.updatedAt.slice(0, 10))}</strong></div>
+          </aside>
+        </div>
       </div>
-    </section>
+    </main>
   );
 }
