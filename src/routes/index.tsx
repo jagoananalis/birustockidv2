@@ -75,6 +75,35 @@ function Home() {
         </div>
       </section>
 
+      <section className="py-10 max-md:py-8">
+        <div className="container-site">
+          <div className="market-overview">
+            <div>
+              <span className="eyebrow">Market pulse</span>
+              <h2>Agenda pasar yang layak diperhatikan hari ini</h2>
+              <p>Gunakan kalender ekonomi sebagai konteks untuk membaca volatilitas, lalu cocokkan dengan analisis teknikal.</p>
+            </div>
+            <div className="market-overview-events">
+              {calendar.events.filter((event) => event.impact === "high").slice(0, 3).map((event) => (
+                <Link key={`${event.country}-${event.name}-${event.timeWib}`} to="/kalender-ekonomi" className="market-event">
+                  <span className="market-event-time">{event.timeWib} WIB</span>
+                  <strong>{event.country} · {event.name}</strong>
+                  <span className="market-event-meta">{event.data} · Dampak tinggi</span>
+                </Link>
+              ))}
+              {calendar.events.filter((event) => event.impact === "high").length === 0 ? (
+                <Link to="/kalender-ekonomi" className="market-event market-event-empty">
+                  <span className="market-event-time">Kalender</span>
+                  <strong>Tidak ada agenda berdampak tinggi yang tersedia.</strong>
+                  <span className="market-event-meta">Buka kalender untuk melihat agenda lengkap.</span>
+                </Link>
+              ) : null}
+            </div>
+            <Link to="/kalender-ekonomi" className="btn btn-outline market-overview-link">Buka Kalender <IconArrowRight size={15} /></Link>
+          </div>
+        </div>
+      </section>
+
       <section className="py-16 max-md:py-11">
         <div className="container-site grid items-start gap-10 lg:grid-cols-[1fr_340px]">
           <div>
