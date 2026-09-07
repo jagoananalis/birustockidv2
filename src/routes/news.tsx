@@ -1,12 +1,11 @@
 import { useMemo } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { FilterChips } from "@/components/filter-chips";
 import { NewsThumb } from "@/components/icons";
 import { PageHero } from "@/components/page-hero";
 import { Pagination } from "@/components/pagination";
 import { listNewsPage } from "@/lib/news";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/news")({
   validateSearch: z.object({ page: z.coerce.number().int().min(1).catch(1), category: z.string().optional() }),
@@ -17,10 +16,14 @@ export const Route = createFileRoute("/news")({
 });
 
 function NewsPage() {
+  const location = useLocation();
   const data = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/news" });
   const categories = useMemo(() => ["Semua", "Ekonomi Global", "Emas", "Kripto"], []);
+  const isDetailRoute = location.pathname.replace(/\/+$/, "") !== "/news";
+
+  if (isDetailRoute) return <Outlet />;
   const activeCategory = search.category ?? "";
 
   return (

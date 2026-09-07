@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { AnalisisCard } from "@/components/analisis-card";
 import { FilterChips } from "@/components/filter-chips";
@@ -16,10 +16,14 @@ export const Route = createFileRoute("/analisis")({
 });
 
 function AnalisisPage() {
+  const location = useLocation();
   const data = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/analisis" });
   const pairs = useMemo(() => ["Semua", ...["XAU/USD", "BTC/USD", "EUR/USD", "GBP/USD"]], []);
+  const isDetailRoute = location.pathname.replace(/\/+$/, "") !== "/analisis";
+
+  if (isDetailRoute) return <Outlet />;
   const activePair = search.pair ?? "";
 
   return (

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { z } from "zod";
 import { EdukasiCard } from "@/components/edukasi-card";
 import { PageHero } from "@/components/page-hero";
@@ -14,8 +14,12 @@ export const Route = createFileRoute("/edukasi")({
 });
 
 function EdukasiPage() {
+  const location = useLocation();
   const data = Route.useLoaderData();
   const search = Route.useSearch();
+  const isDetailRoute = location.pathname.replace(/\/+$/, "") !== "/edukasi";
+
+  if (isDetailRoute) return <Outlet />;
 
   return (
     <>
