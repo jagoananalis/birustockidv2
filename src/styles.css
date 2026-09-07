@@ -1070,3 +1070,7 @@
 @media (max-width: 520px) { .detail-hero { padding:20px; } .market-grid { grid-template-columns:1fr 1fr; } }
 .card > a { color:inherit; text-decoration:none; }
 .card > a:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+
+
+.reading-column { max-width: 690px; }
+.reading-column p:first-child { margin-top: 0; }

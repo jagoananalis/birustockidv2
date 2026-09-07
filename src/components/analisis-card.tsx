@@ -17,6 +17,7 @@ export function AnalisisCard({ item }: { item: AnalisisItem }) {
       <Link
         to="/analisis/$slug"
         params={{ slug: item.slug }}
+        search={{ page: 1 }}
         className="block h-full"
         aria-label={`Buka analisis ${item.title}`}
       >

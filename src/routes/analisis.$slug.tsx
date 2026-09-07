@@ -18,12 +18,26 @@ export const Route = createFileRoute("/analisis/$slug")({
     return item;
   },
   component: AnalisisDetail,
-  head: ({ loaderData }) => ({
-    meta: [
-      { title: `${loaderData?.title ?? "Analisis"} | Birustock Indonesia` },
-      { name: "description", content: loaderData?.excerpt ?? "" },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const title = `${loaderData?.title ?? "Analisis"} | Birustock Indonesia`;
+    const description = loaderData?.excerpt ?? "";
+    const image = loaderData?.imageUrl || "/og.jpg";
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { name: "robots", content: "index,follow" },
+        { property: "og:type", content: "article" },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:image", content: image },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+      ],
+      links: [{ rel: "canonical", href: `/analisis/${loaderData?.slug ?? ""}` }],
+    };
+  },
 });
 
 function AnalisisDetail() {
@@ -35,24 +49,25 @@ function AnalisisDetail() {
       <div className="container-site">
         <article className="mx-auto max-w-[760px] stagger">
           <div className="mb-6">
-            <Link to="/analisis" className="link-arrow">
+            <Link to="/analisis" search={{ page: 1 }} className="link-arrow">
               <span className="inline-block rotate-180">
                 <IconArrowRight size={15} />
               </span>
               Kembali ke Analisis
             </Link>
           </div>
-          <div className="mb-4 flex items-center gap-3">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
             <span className={cn("badge", ACCENT[item.accent])}>{item.pair}</span>
-            <span className="text-[13px] text-subtle">{formatIdDate(item.publishedAt)}</span>
+            <span className="text-[13px] text-subtle">Terbit {formatIdDate(item.publishedAt)}</span>{item.updatedAt.slice(0, 10) !== item.publishedAt ? <span className="text-[13px] text-subtle">Diperbarui {formatIdDate(item.updatedAt)}</span> : null}
           </div>
-          <h1 className="mb-6 text-[30px] leading-snug font-extrabold tracking-tight">{item.title}</h1>
+          <h1 className="mb-4 text-[clamp(2rem,4.5vw,3.2rem)] leading-[1.08] font-extrabold tracking-tight">{item.title}</h1>
+          <p className="mb-7 max-w-3xl text-lg leading-relaxed text-muted">{item.excerpt}</p>
           {item.imageUrl ? (
             <div className="cover-frame mb-8">
               <img src={item.imageUrl} alt={item.title} />
             </div>
           ) : null}
-          <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Metric label="Bias" value={item.bias} />
             <Metric label="Timeframe" value={item.timeframe} />
             <Metric label="Support" value={item.support || "—"} />
@@ -66,11 +81,13 @@ function AnalisisDetail() {
               {item.scenarioBearish ? <Scenario title="Skenario Bearish" value={item.scenarioBearish} /> : null}
             </div>
           ) : null}
+          <div className="reading-column">
           {paragraphs.map((p) => (
             <p key={p} className="mb-4.5 text-base leading-relaxed text-muted">
               {p}
             </p>
           ))}
+          </div>
           <div className="mt-8 rounded-[8px] border border-line bg-bg-alt px-4.5 py-4 text-[13.5px] text-muted">
             Analisis ini bersifat edukasi dan bukan merupakan ajakan atau rekomendasi untuk
             membeli/menjual instrumen tertentu. Selalu gunakan manajemen risiko pribadi.

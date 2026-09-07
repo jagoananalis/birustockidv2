@@ -4,7 +4,7 @@ import type { EdukasiItem } from "@/lib/content";
 
 export function EdukasiCard({ item }: { item: EdukasiItem }) {
   return (
-    <Link to="/edukasi/$slug" params={{ slug: item.slug }} className="edu-card">
+    <Link to="/edukasi/$slug" params={{ slug: item.slug }} search={{ page: 1 }} className="edu-card">
       <div className="card-cover">
         {item.imageUrl ? (
           <img src={item.imageUrl} alt="" loading="lazy" />

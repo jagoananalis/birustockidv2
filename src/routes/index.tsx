@@ -57,7 +57,7 @@ function Home() {
               membantu kamu memahami pergerakan Crypto, Forex, dan Gold.
             </p>
             <div className="flex flex-wrap gap-3.5">
-              <Link to="/analisis" className="btn btn-primary">
+              <Link to="/analisis" search={{ page: 1 }} className="btn btn-primary">
                 Lihat Analisis Terbaru
               </Link>
               <a
@@ -80,7 +80,7 @@ function Home() {
           <div>
             <div className="mb-6 flex items-baseline justify-between">
               <h2 className="text-2xl font-extrabold tracking-tight">Analisis Terbaru</h2>
-              <Link to="/analisis" className="link-arrow">
+              <Link to="/analisis" search={{ page: 1 }} className="link-arrow">
                 Lihat Semua <IconArrowRight size={15} />
               </Link>
             </div>
@@ -103,6 +103,7 @@ function Home() {
                   key={item.slug}
                   to="/news/$slug"
                   params={{ slug: item.slug }}
+                  search={{ page: 1 }}
                   className="flex gap-3.5"
                 >
                   <div className="size-16 shrink-0 overflow-hidden rounded-sm">
@@ -115,7 +116,7 @@ function Home() {
                 </Link>
               ))}
             </div>
-            <Link to="/news" className="link-arrow mt-5">
+            <Link to="/news" search={{ page: 1 }} className="link-arrow mt-5">
               Lihat Semua Berita <IconArrowRight size={15} />
             </Link>
           </aside>

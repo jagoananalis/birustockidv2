@@ -2,8 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSql } from "@/lib/db";
 import { slugify } from "@/lib/format";
+import type { ContentPage } from "@/lib/content";
 
 export type NewsThumb = "capitol" | "gold" | "bitcoin";
+export type NewsStatus = "DRAFT" | "PUBLISHED" | "SCHEDULED" | "ARCHIVED";
 export type NewsItem = {
   id: number;
   slug: string;
@@ -15,6 +17,7 @@ export type NewsItem = {
   body: string[];
   publishedAt: string;
   updatedAt: string;
+  status: NewsStatus;
 };
 
 type NewsRow = Omit<NewsItem, "date" | "body" | "thumb" | "publishedAt" | "updatedAt"> & {
@@ -22,6 +25,7 @@ type NewsRow = Omit<NewsItem, "date" | "body" | "thumb" | "publishedAt" | "updat
   thumb: string;
   published_at: string;
   updated_at: string;
+  status: string;
 };
 
 function asThumb(value: string): NewsThumb {
@@ -40,6 +44,7 @@ function mapNews(row: NewsRow): NewsItem {
     body: row.body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
     publishedAt: String(row.published_at).slice(0, 10),
     updatedAt: String(row.updated_at),
+    status: ["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"].includes(row.status) ? row.status as NewsStatus : "PUBLISHED",
   };
 }
 
@@ -53,6 +58,7 @@ const input = z.object({
   body: z.string().min(20).max(20_000),
   thumb: z.enum(["capitol", "gold", "bitcoin"]),
   publishedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  status: z.enum(["DRAFT", "PUBLISHED", "SCHEDULED", "ARCHIVED"]).default("PUBLISHED"),
 });
 
 async function uniqueSlug(base: string, excludeId?: number) {
@@ -66,24 +72,71 @@ async function uniqueSlug(base: string, excludeId?: number) {
   return `${base}-${Date.now().toString(36)}`;
 }
 
-export const listNews = createServerFn({ method: "GET" }).handler(async () => {
-  const sql = await getSql();
-  const rows = await sql<NewsRow>`
-    select id, slug, category, title, excerpt, body, thumb, published_at, updated_at
-    from news order by published_at desc, id desc
-  `;
-  return rows.map(mapNews);
+const pageSchema = z.object({
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(30).default(9),
+  category: z.string().trim().max(80).optional(),
 });
+
+export const listNews = createServerFn({ method: "GET" })
+  .validator((input: unknown) => pageSchema.parse(input ?? {}))
+  .handler(async ({ data }) => {
+    const sql = await getSql();
+    const offset = (data.page - 1) * data.pageSize;
+    const rows = await sql<NewsRow>`
+      select id, slug, category, title, excerpt, body, thumb, published_at, updated_at, status
+      from news
+      where status = 'PUBLISHED'
+        and (${data.category ?? ""} = '' or category = ${data.category ?? ""})
+      order by published_at desc, id desc
+      limit ${data.pageSize} offset ${offset}
+    `;
+    return rows.map(mapNews);
+  });
+
+export const listNewsPage = createServerFn({ method: "GET" })
+  .validator((input: unknown) => pageSchema.parse(input ?? {}))
+  .handler(async ({ data }): Promise<ContentPage<NewsItem>> => {
+    const sql = await getSql();
+    const offset = (data.page - 1) * data.pageSize;
+    const [rows, countRows] = await Promise.all([
+      sql<NewsRow>`
+        select id, slug, category, title, excerpt, body, thumb, published_at, updated_at, status
+        from news
+        where status = 'PUBLISHED'
+          and (${data.category ?? ""} = '' or category = ${data.category ?? ""})
+        order by published_at desc, id desc
+        limit ${data.pageSize} offset ${offset}
+      `,
+      sql<{ count: string }>`
+        select count(*)::text as count from news
+        where status = 'PUBLISHED'
+          and (${data.category ?? ""} = '' or category = ${data.category ?? ""})
+      `,
+    ]);
+    const totalItems = Number(countRows[0]?.count ?? 0);
+    return { items: rows.map(mapNews), page: data.page, pageSize: data.pageSize, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / data.pageSize)) };
+  });
 
 export const getNewsBySlug = createServerFn({ method: "GET" })
   .validator((value: unknown) => z.object({ slug: z.string().min(1) }).parse(value))
   .handler(async ({ data }) => {
     const sql = await getSql();
     const rows = await sql<NewsRow>`
-      select id, slug, category, title, excerpt, body, thumb, published_at, updated_at
-      from news where slug = ${data.slug} limit 1
+      select id, slug, category, title, excerpt, body, thumb, published_at, updated_at, status
+      from news where slug = ${data.slug} and status = 'PUBLISHED' limit 1
     `;
     return rows[0] ? mapNews(rows[0]) : null;
+  });
+
+export const listNewsAdmin = createServerFn({ method: "POST" })
+  .validator((value: unknown) => z.object({ token: z.string().min(1) }).parse(value))
+  .handler(async ({ data }) => {
+    const { assertFounder } = await import("./founder.server");
+    assertFounder(data.token);
+    const sql = await getSql();
+    const rows = await sql<NewsRow>`select id, slug, category, title, excerpt, body, thumb, published_at, updated_at, status from news order by published_at desc, id desc`;
+    return rows.map(mapNews);
   });
 
 export const saveNews = createServerFn({ method: "POST" })
@@ -97,13 +150,13 @@ export const saveNews = createServerFn({ method: "POST" })
       await sql`
         update news set slug=${slug}, category=${data.category.trim()}, title=${data.title.trim()},
         excerpt=${data.excerpt.trim()}, body=${data.body.trim()}, thumb=${data.thumb},
-        published_at=${data.publishedAt}, updated_at=now() where id=${data.id}
+        published_at=${data.publishedAt}, status=${data.status}, updated_at=now() where id=${data.id}
       `;
       return { id: data.id, slug };
     }
     const rows = await sql<{ id: number }>`
-      insert into news (slug, category, title, excerpt, body, thumb, published_at)
-      values (${slug}, ${data.category.trim()}, ${data.title.trim()}, ${data.excerpt.trim()}, ${data.body.trim()}, ${data.thumb}, ${data.publishedAt})
+      insert into news (slug, category, title, excerpt, body, thumb, published_at, status)
+      values (${slug}, ${data.category.trim()}, ${data.title.trim()}, ${data.excerpt.trim()}, ${data.body.trim()}, ${data.thumb}, ${data.publishedAt}, ${data.status})
       returning id
     `;
     return { id: rows[0]?.id ?? 0, slug };
