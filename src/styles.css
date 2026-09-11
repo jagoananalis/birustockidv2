@@ -938,6 +938,21 @@
   .ticker:hover .ticker-track {
     animation-play-state: paused;
   }
+
+  .ticker-shell-market {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .ticker-live-dot.is-idle {
+    animation: none;
+    opacity: 0.45;
+  }
+  .ticker-track-market-ltr {
+    animation-name: tickerLtr;
+    animation-duration: 34s;
+  }
+  .ticker-market-item.is-price-flash {
+    animation: tickerPriceFlash 500ms var(--ease-out-soft);
+  }
   .ticker-item {
     display: inline-flex;
     align-items: center;
@@ -981,45 +996,6 @@
   .ticker-attribution:hover,
   .ticker-more:hover {
     color: var(--color-primary);
-  }
-  .ticker-calendar-label {
-    color: var(--color-subtle);
-  }
-  .ticker-calendar-icon {
-    padding: 2px 5px;
-    border: 1px solid var(--color-line);
-    border-radius: 5px;
-    font-family: var(--font-mono);
-    font-size: 8px;
-    color: var(--color-primary);
-  }
-  .ticker-track-calendar {
-    animation-duration: 42s;
-  }
-  .ticker-calendar-item {
-    gap: 8px;
-  }
-  .ticker-impact-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: var(--color-accent-red);
-  }
-  .ticker-event-name {
-    color: var(--color-muted);
-  }
-  .ticker-countdown {
-    padding: 2px 6px;
-    border-radius: 999px;
-    background: var(--color-accent-red-bg);
-    color: var(--color-accent-red);
-    font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 700;
-  }
-  .ticker-countdown.is-released {
-    background: var(--color-accent-green-bg);
-    color: var(--color-accent-green);
   }
   .ticker-stack.is-refreshed .ticker-market-item {
     animation: tickerItemPulse 650ms var(--ease-out-soft);
@@ -1156,6 +1132,31 @@
 @keyframes tickerItemPulse {
   from { opacity: 0.55; transform: translateY(2px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+
+@keyframes tickerLtr {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes tickerPriceFlash {
+  0% {
+    transform: translateY(2px);
+    opacity: 0.62;
+  }
+  55% {
+    transform: translateY(0) scale(1.025);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes ticker {

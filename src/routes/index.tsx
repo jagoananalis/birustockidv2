@@ -13,13 +13,12 @@ import {
 } from "@/components/icons";
 import { MarketTicker } from "@/components/ticker";
 import { listNews } from "@/lib/news";
-import { getEconomicCalendar } from "@/lib/calendar";
 import { listAnalisis } from "@/lib/content";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const [analisis, calendar, news] = await Promise.all([listAnalisis(), getEconomicCalendar(), listNews()]);
-    return { analisis, calendar, news };
+    const [analisis, news] = await Promise.all([listAnalisis(), listNews()]);
+    return { analisis, news };
   },
   component: Home,
   head: () => ({
@@ -35,13 +34,13 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { analisis, calendar, news } = Route.useLoaderData();
+  const { analisis, news } = Route.useLoaderData();
   const topAnalisis = analisis.slice(0, 3);
   const topNews = news.slice(0, 3);
 
   return (
     <>
-      <MarketTicker events={calendar.events} />
+      <MarketTicker />
 
       <section className="overflow-hidden">
         <div className="container-site grid items-center gap-10 py-14 max-md:py-8 md:grid-cols-[1.02fr_0.98fr]">
