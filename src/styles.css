@@ -934,6 +934,7 @@
     padding: 10px 0;
     animation: ticker 36s linear infinite;
     will-change: transform;
+    backface-visibility: hidden;
   }
   .ticker:hover .ticker-track {
     animation-play-state: paused;
@@ -947,11 +948,9 @@
     opacity: 0.45;
   }
   .ticker-track-market-ltr {
-    animation-name: tickerLtr;
-    animation-duration: 34s;
-  }
-  .ticker-market-item.is-price-flash {
-    animation: tickerPriceFlash 500ms var(--ease-out-soft);
+    animation: tickerMarketMarquee 28s linear infinite;
+    transform: translate3d(-50%, 0, 0);
+    will-change: transform;
   }
   .ticker-item {
     display: inline-flex;
@@ -965,6 +964,8 @@
   .ticker-market-item {
     gap: 8px;
     padding-right: 2px;
+    flex: 0 0 auto;
+    backface-visibility: hidden;
   }
   .ticker-symbol {
     font-weight: 800;
@@ -1135,27 +1136,12 @@
 }
 
 
-@keyframes tickerLtr {
+@keyframes tickerMarketMarquee {
   from {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
   to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes tickerPriceFlash {
-  0% {
-    transform: translateY(2px);
-    opacity: 0.62;
-  }
-  55% {
-    transform: translateY(0) scale(1.025);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
+    transform: translate3d(0, 0, 0);
   }
 }
 

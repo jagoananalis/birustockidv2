@@ -59,8 +59,7 @@ function MarketRow({
   source,
   fetchedAt,
   connected,
-  flashed,
-}: MarketState & { connected: boolean; flashed: Set<CryptoTicker["id"]> }) {
+}: MarketState & { connected: boolean }) {
   const loop = items.length > 1 ? [...items, ...items] : items;
   const liveLabel = connected ? "LIVE" : source === "live" ? "SNAPSHOT" : "CACHE";
 
@@ -82,7 +81,6 @@ function MarketRow({
                 className={cn(
                   "ticker-item",
                   "ticker-market-item",
-                  flashed.has(item.id) && "is-price-flash",
                 )}
               >
                 <span className="ticker-symbol">{item.symbol}</span>
@@ -109,7 +107,6 @@ function MarketRow({
 export function MarketTicker() {
   const [market, setMarket] = useState<MarketState | null>(null);
   const [connected, setConnected] = useState(false);
-  const [flashed, setFlashed] = useState<Set<CryptoTicker["id"]>>(new Set());
   const [clock, setClock] = useState(Date.now());
 
   useEffect(() => {
@@ -161,14 +158,6 @@ export function MarketTicker() {
               ),
             };
           });
-          setFlashed((current) => new Set(current).add(id));
-          window.setTimeout(() => {
-            setFlashed((current) => {
-              const next = new Set(current);
-              next.delete(id);
-              return next;
-            });
-          }, 500);
         } catch {
           // Ignore malformed stream events.
         }
@@ -206,5 +195,5 @@ export function MarketTicker() {
     [clock],
   );
 
-  return <MarketRow {...(market ?? fallbackMarket)} connected={connected} flashed={flashed} />;
+  return <MarketRow {...(market ?? fallbackMarket)} connected={connected} />;
 }
