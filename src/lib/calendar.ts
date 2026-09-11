@@ -136,7 +136,7 @@ const globalRef = globalThis as typeof globalThis & {
 
 
 
-const CACHE_MS = 60 * 60 * 1000;
+const CACHE_MS = 10 * 60 * 1000;
 
 
 

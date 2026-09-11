@@ -77,8 +77,7 @@ export function HeroSlider({ items }: { items: AnalisisItem[] }) {
               <Link
                 to="/analisis/$slug"
                 params={{ slug: item.slug }}
-                  search={{ page: 1 }}
-                  className="btn btn-primary mt-6 w-fit"
+                className="btn btn-primary mt-6 w-fit"
               >
                 Baca Analisis <IconArrowRight size={15} />
               </Link>

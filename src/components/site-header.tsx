@@ -173,7 +173,7 @@ export function SiteHeader() {
                 </a>
               ))}
             </div>
-            <Link to="/news" search={{ page: 1 }} className="header-icon-btn" aria-label="Cari berita">
+            <Link to="/news" className="header-icon-btn" aria-label="Cari berita">
               <IconSearch size={18} />
             </Link>
             <button

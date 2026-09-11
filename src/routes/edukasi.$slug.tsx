@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { IconArrowRight, IconCalendar, IconDocument, IconGraduation } from "@/components/icons";
+import { IconArrowRight } from "@/components/icons";
 import { getEdukasiBySlug } from "@/lib/content";
-import { formatIdDate, splitParagraphs } from "@/lib/format";
+import { splitParagraphs } from "@/lib/format";
 
 export const Route = createFileRoute("/edukasi/$slug")({
   loader: async ({ params }) => {
@@ -10,26 +10,12 @@ export const Route = createFileRoute("/edukasi/$slug")({
     return item;
   },
   component: EdukasiDetail,
-  head: ({ loaderData }) => {
-    const title = `${loaderData?.title ?? "Edukasi"} | Birustock Indonesia`;
-    const description = loaderData?.description ?? "";
-    const image = loaderData?.imageUrl || "/og.jpg";
-    return {
-      meta: [
-        { title },
-        { name: "description", content: description },
-        { name: "robots", content: "index,follow" },
-        { property: "og:type", content: "article" },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:image", content: image },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: title },
-        { name: "twitter:description", content: description },
-      ],
-      links: [{ rel: "canonical", href: `/edukasi/${loaderData?.slug ?? ""}` }],
-    };
-  },
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: `${loaderData?.title ?? "Edukasi"} | Birustock Indonesia` },
+      { name: "description", content: loaderData?.description ?? "" },
+    ],
+  }),
 });
 
 function EdukasiDetail() {
@@ -37,54 +23,38 @@ function EdukasiDetail() {
   const paragraphs = splitParagraphs(item.body);
 
   return (
-    <main className="analysis-detail-page py-10 max-md:py-7">
+    <section className="py-16 max-md:py-11">
       <div className="container-site">
-        <nav className="detail-breadcrumb" aria-label="Breadcrumb">
-          <Link to="/edukasi" search={{ page: 1 }}>Edukasi</Link>
-          <span>/</span>
-          <span aria-current="page">{item.title}</span>
-        </nav>
-
-        <section className="content-detail-hero stagger">
-          <div>
-            <Link to="/edukasi" search={{ page: 1 }} className="detail-back-link">
-              <span className="inline-block rotate-180"><IconArrowRight size={15} /></span>
+        <article className="mx-auto max-w-[760px] stagger">
+          <div className="mb-6">
+            <Link to="/edukasi" className="link-arrow">
+              <span className="inline-block rotate-180">
+                <IconArrowRight size={15} />
+              </span>
               Kembali ke Edukasi
             </Link>
-            <div className="mt-7 flex flex-wrap items-center gap-2.5">
-              <span className="badge"><IconGraduation size={13} /> {item.level}</span>
-              <span className="detail-pill">Materi Edukasi</span>
-            </div>
-            <h1>{item.title}</h1>
-            <p className="analysis-detail-lead">{item.description}</p>
-            <div className="analysis-detail-meta">
-              <span><IconCalendar size={15} />Terbit {formatIdDate(item.publishedAt)}</span>
-              <span><IconDocument size={15} />Diperbarui {formatIdDate(item.updatedAt.slice(0, 10))}</span>
-            </div>
           </div>
-          <div className="content-detail-media">
-            {item.imageUrl ? <img src={item.imageUrl} alt={item.title} /> : <div className="content-detail-media-empty"><IconGraduation size={42} /></div>}
+          <div className="mb-4 flex items-center gap-3">
+            <span className="badge">{item.level}</span>
           </div>
-        </section>
-
-        <div className="content-detail-layout mt-6">
-          <article className="detail-panel content-detail-reading">
-            <h2 className="detail-section-title">Materi Lengkap</h2>
-            <div className="reading-column analysis-reading-column">
-              {paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+          <h1 className="mb-6 text-[30px] leading-snug font-extrabold tracking-tight">{item.title}</h1>
+          {item.imageUrl ? (
+            <div className="cover-frame mb-8">
+              <img src={item.imageUrl} alt={item.title} />
             </div>
-            <div className="analysis-disclaimer">
-              Materi ini bersifat edukasi umum untuk membantu memahami konsep trading, bukan rekomendasi atau sinyal untuk membuka posisi tertentu.
-            </div>
-          </article>
-          <aside className="detail-panel detail-side-card">
-            <h2 className="detail-section-title">Informasi Materi</h2>
-            <div className="info-row"><span>Level</span><strong>{item.level}</strong></div>
-            <div className="info-row"><span>Tanggal Terbit</span><strong>{formatIdDate(item.publishedAt)}</strong></div>
-            <div className="info-row"><span>Diperbarui</span><strong>{formatIdDate(item.updatedAt.slice(0, 10))}</strong></div>
-          </aside>
-        </div>
+          ) : null}
+          {paragraphs.map((p) => (
+            <p key={p} className="mb-4.5 text-base leading-relaxed text-muted">
+              {p}
+            </p>
+          ))}
+          <div className="mt-8 rounded-[8px] border border-line bg-bg-alt px-4.5 py-4 text-[13.5px] text-muted">
+            Materi ini bersifat edukasi umum untuk membantu memahami konsep dasar trading, bukan
+            rekomendasi atau sinyal untuk membuka posisi tertentu. Selalu sesuaikan dengan riset dan
+            toleransi risiko pribadi.
+          </div>
+        </article>
       </div>
-    </main>
+    </section>
   );
 }

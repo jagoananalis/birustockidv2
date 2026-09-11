@@ -1,43 +1,34 @@
-import { useMemo } from "react";
-import { createFileRoute, Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { z } from "zod";
+import { useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { FilterChips } from "@/components/filter-chips";
 import { NewsThumb } from "@/components/icons";
 import { PageHero } from "@/components/page-hero";
-import { Pagination } from "@/components/pagination";
-import { listNewsPage } from "@/lib/news";
+import { listNews } from "@/lib/news";
 
 export const Route = createFileRoute("/news")({
-  validateSearch: z.object({ page: z.coerce.number().int().min(1).catch(1), category: z.string().optional() }),
-  loaderDeps: ({ search }) => ({ page: search.page, category: search.category }),
-  loader: ({ deps }) => listNewsPage({ data: { page: deps.page, pageSize: 9, category: deps.category } }),
+  loader: () => listNews(),
   component: NewsPage,
-  head: () => ({ meta: [{ title: "News Terbaru | Birustock Indonesia", name: "description", content: "Berita pasar, ekonomi, emas, forex, dan kripto dari Birustock Indonesia." }] }),
+  head: () => ({ meta: [{ title: "News Terbaru | Birustock Indonesia" }] }),
 });
 
 function NewsPage() {
-  const location = useLocation();
-  const data = Route.useLoaderData();
-  const search = Route.useSearch();
-  const navigate = useNavigate({ from: "/news" });
-  const categories = useMemo(() => ["Semua", "Ekonomi Global", "Emas", "Kripto"], []);
-  const isDetailRoute = location.pathname.replace(/\/+$/, "") !== "/news";
-
-  if (isDetailRoute) return <Outlet />;
-  const activeCategory = search.category ?? "";
+  const items = Route.useLoaderData();
+  const categories = useMemo(() => ["Semua", ...new Set(items.map((n) => n.category))], [items]);
+  const [filter, setFilter] = useState("Semua");
+  const visible = filter === "Semua" ? items : items.filter((n) => n.category === filter);
 
   return (
     <>
-      <PageHero eyebrow="Berita Pasar" title="News Terbaru" description="Buka setiap berita untuk membaca konteks lengkap dan memahami dampaknya terhadap pasar." />
+      <PageHero eyebrow="Berita Pasar" title="News Terbaru" description="Berita ekonomi, emas, forex, dan kripto yang berdampak langsung ke pergerakan pasar." />
       <section className="py-16 max-md:py-11">
         <div className="container-site">
-          <FilterChips options={categories} value={activeCategory || "Semua"} onChange={(value) => void navigate({ search: { page: 1, category: value === "Semua" ? undefined : value } })} label="Filter kategori" />
-          {data.items.length === 0 ? (
+          <FilterChips options={categories} value={filter} onChange={setFilter} label="Filter kategori" />
+          {visible.length === 0 ? (
             <p className="py-6 text-sm text-subtle">Belum ada berita untuk kategori ini.</p>
           ) : (
             <div className="stagger grid gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
-              {data.items.map((item) => (
-                <Link key={item.slug} to="/news/$slug" params={{ slug: item.slug }} search={{ page: 1 }} className="news-card">
+              {visible.map((item) => (
+                <Link key={item.slug} to="/news/$slug" params={{ slug: item.slug }} className="news-card">
                   <div className="aspect-video w-full"><NewsThumb type={item.thumb} /></div>
                   <div className="flex flex-1 flex-col gap-2.5 p-[18px]">
                     <span className="badge w-fit">{item.category}</span>
@@ -49,7 +40,6 @@ function NewsPage() {
               ))}
             </div>
           )}
-          <Pagination page={data.page} totalPages={data.totalPages} search={{ ...search }} />
         </div>
       </section>
     </>

@@ -111,8 +111,7 @@ Namun, penolakan di area ini berpotensi memicu koreksi jangka pendek terlebih da
   '/images/analisis-btcusd-2.jpg',
   'orange',
   '2026-08-25'
-)
-ON CONFLICT (slug) DO NOTHING;
+);
 
 insert into edukasi (slug, level, title, description, body, image_url)
 values
@@ -187,5 +186,4 @@ Tiga angka yang biasa ditampilkan adalah forecast (perkiraan konsensus pasar), p
 
 Karena pergerakan harga di sekitar rilis data berdampak tinggi bisa sangat cepat dan tidak terduga (termasuk risiko slippage dan spread melebar), banyak trader memilih memperlebar stop loss, mengurangi ukuran posisi, atau menghindari membuka posisi baru tepat menjelang rilis data tersebut.$b$,
   '/images/edukasi-calendar.jpg'
-)
-ON CONFLICT (slug) DO NOTHING;
+);
